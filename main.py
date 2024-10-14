@@ -16,6 +16,7 @@ class Pipe:
         self.gap = gap # the size of the opening
         self.width = width # the width of the pipe
         self.spawn_timer = spawn_timer
+        self.scored = False
 
     def draw_pipe(self):
         # Draw the top pipe's rounded part
@@ -89,7 +90,7 @@ class Duck:
                 if duck_pixel != pyxel.COLOR_RED:  # COLOR_RED is transparent
                     pipe_x_min, pipe_y_min, pipe_x_max, pipe_y_max = pipe_rect
                     # Check if the current pixel of the duck is within the pipe bounding box
-                    if pipe_x_min <= x + i <= pipe_x_max and pipe_y_min <= y + j <= pipe_y_max:
+                    if pipe_x_min + 1 <= x + i <= pipe_x_max and pipe_y_min <= y + j <= pipe_y_max - 1:
                         pipe_pixel = pyxel.images[0].pget(int(x + i), int(y + j))  # Using pyxel.images[0]
                         # If pipe pixel is not transparent, collision occurred
                         if pipe_pixel != pyxel.COLOR_RED:  
@@ -102,9 +103,8 @@ class Game:
         self.duck: Duck = Duck(WIDTH // 2, HEIGHT // 2, "duck.pyxres")
         self.pipes: list[Pipe] = [Pipe(WIDTH, random.randint(40, 160), random.randint(60, 90))]
         self.pipe_spawn_timer = 0
-        self.score: int = 0
+        self.score: int = -1 
         self.game_over: bool = False
-        self.game_start: bool = False
         pyxel.load(self.duck.sprite)
         pyxel.run(self.update, self.draw)
     
@@ -126,8 +126,13 @@ class Game:
         for pipe in self.pipes:
             pipe.x -= 2 
         
+            if not pipe.scored and self.duck.x > pipe.width:
+                self.score += 1
+                pipe.scored = True
+
         self.pipes = [pipe for pipe in self.pipes if pipe.x + pipe.width > 0]
         
+        # Spawn new pipes every 90 frames
         self.pipe_spawn_timer += 1
         if self.pipe_spawn_timer > 90:  # Every 90 frames (about 3 seconds at 30 FPS)
             new_pipe = Pipe(WIDTH, random.randint(20, 150), random.randint(40, 60))
@@ -136,11 +141,7 @@ class Game:
 
     def update(self) -> None:
 
-        #while not self.game_start:
-
-
         if self.game_over:
-            self.game_start = False
             return
         
         self.update_duck()
@@ -156,6 +157,7 @@ class Game:
     def draw(self) -> None:
         pyxel.cls(0)
         pyxel.rect(0, 0, WIDTH, HEIGHT, 3)
+        
         pyxel.text(20, 20, f"Score: {self.score}", pyxel.COLOR_WHITE, None)
         if self.duck.is_flapping:
             pyxel.blt(self.duck.x, self.duck.y, 0, 0, 0, 16, 16, 8)
